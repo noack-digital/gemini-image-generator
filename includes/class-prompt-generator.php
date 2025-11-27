@@ -91,17 +91,38 @@ class GIG_Prompt_Generator {
         }
 
         $sections = array();
+        
+        // Prüfe ob DOMDocument verfügbar ist
+        if (!class_exists('DOMDocument')) {
+            return array();
+        }
+
         $dom = new DOMDocument();
         libxml_use_internal_errors(true);
+        
+        // HTML bereinigen und sicherstellen, dass es valide ist
         $html = '<div>' . $content . '</div>';
+        
+        // Encoding-Konvertierung nur wenn verfügbar
         if (function_exists('mb_convert_encoding')) {
             $html = mb_convert_encoding($html, 'HTML-ENTITIES', 'UTF-8');
         }
-        $dom->loadHTML($html, LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+        
+        // LoadHTML kann fehlschlagen, daher Error-Handling
+        $load_success = @$dom->loadHTML($html, LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
         libxml_clear_errors();
+
+        if (!$load_success) {
+            return array();
+        }
 
         $xpath = new DOMXPath($dom);
         $headings = $xpath->query('//h2');
+
+        // Prüfe ob Query erfolgreich war
+        if (false === $headings) {
+            return array();
+        }
 
         $index = 0;
         foreach ($headings as $heading) {

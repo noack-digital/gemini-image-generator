@@ -180,12 +180,23 @@ class GIG_Gemini_API {
 
     /**
      * Extrahiert Keyword aus Titel (Fallback)
+     * 
+     * @param string $title Artikel-Titel
+     * @return string Extrahierte Keywords
      */
     private function extract_keyword_from_title($title) {
+        if (empty($title)) {
+            return '';
+        }
+
         // Stoppwörter entfernen
         $stopwords = array('der', 'die', 'das', 'ein', 'eine', 'und', 'oder', 'für', 'mit', 'von', 'zu', 'im', 'am', 'ist', 'sind', 'wird', 'werden', 'the', 'a', 'an', 'and', 'or', 'for', 'with', 'in', 'on', 'is', 'are');
         
         $words = preg_split('/\s+/', strtolower($title));
+        if (false === $words || empty($words)) {
+            return '';
+        }
+
         $relevant = array();
         
         foreach ($words as $word) {
@@ -196,7 +207,15 @@ class GIG_Gemini_API {
             }
         }
 
-        return implode(' ', $relevant);
+        $keyword = implode(' ', $relevant);
+        
+        // Fallback: Erste 3 Wörter wenn keine relevanten gefunden
+        if (empty($keyword)) {
+            $words = array_slice(preg_split('/\s+/', $title), 0, 3);
+            $keyword = implode(' ', array_filter($words));
+        }
+
+        return $keyword;
     }
 
     /**
