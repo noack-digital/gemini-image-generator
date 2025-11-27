@@ -35,6 +35,7 @@ build/
 *.bak
 *.backup
 *.old
+*~
 
 # OS files
 .DS_Store
