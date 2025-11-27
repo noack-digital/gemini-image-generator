@@ -29,6 +29,9 @@ class GIG_Editor_Metabox {
         add_action('wp_ajax_gig_generate_section_prompt', array($this, 'ajax_generate_section_prompt'));
     }
 
+    /**
+     * Registriert die Metabox für unterstützte Post-Types
+     */
     public function register_metabox() {
         $post_types = apply_filters('gig_supported_post_types', array('post', 'page'));
 
@@ -274,6 +277,9 @@ class GIG_Editor_Metabox {
             wp_send_json_error(__('Prompt ist erforderlich.', 'gemini-image-generator'));
         }
 
+        // Filter: Prompt vor Generierung anpassen
+        $prompt = apply_filters('gig_prompt_before_generation', $prompt, $post_id);
+
         $params = array(
             'ratio'   => isset($_POST['ratio']) ? sanitize_text_field($_POST['ratio']) : '16:9',
             'quality' => isset($_POST['quality']) ? sanitize_text_field($_POST['quality']) : 'high',
@@ -282,6 +288,9 @@ class GIG_Editor_Metabox {
             'mood'    => isset($_POST['mood']) ? sanitize_text_field($_POST['mood']) : '',
             'colors'  => isset($_POST['colors']) ? sanitize_text_field($_POST['colors']) : '',
         );
+
+        // Filter: Bildparameter anpassen
+        $params = apply_filters('gig_image_params', $params, $post_id);
 
         $section_id = isset($_POST['section_id']) ? sanitize_text_field($_POST['section_id']) : '';
         $max_width = isset($_POST['max_width']) ? absint($_POST['max_width']) : 0;
@@ -298,6 +307,9 @@ class GIG_Editor_Metabox {
 
         if (!empty($settings['auto_seo_meta'])) {
             $metadata = $this->gemini_api->generate_image_metadata($post_id, $prompt);
+            
+            // Filter: Metadaten anpassen
+            $metadata = apply_filters('gig_image_metadata', $metadata, $post_id, $prompt);
         }
 
         $target_format = isset($image_response['target_format']) ? $image_response['target_format'] : 'webp';

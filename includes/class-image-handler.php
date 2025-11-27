@@ -11,15 +11,36 @@ class GIG_Image_Handler {
 
     /**
      * Speichert, konvertiert, skaliert und optimiert das Bild
+     * 
+     * @param string $base64_data Base64-kodierte Bilddaten
+     * @param string $source_mime MIME-Type des Quellbildes
+     * @param int $post_id Post-ID (optional)
+     * @param string $prompt Verwendeter Prompt
+     * @param string $target_format Zielformat ('webp', 'png', 'jpeg')
+     * @param array $metadata Metadaten-Array
+     * @param array $resize_override Override für Resize-Einstellungen
+     * @return int|WP_Error Attachment-ID oder Fehler
      */
     public function save_base64_image($base64_data, $source_mime, $post_id = 0, $prompt = '', $target_format = 'webp', $metadata = array(), $resize_override = array()) {
         if (empty($base64_data)) {
             return new WP_Error('gig_no_data', __('Keine Bilddaten.', 'gemini-image-generator'));
         }
 
-        $image_binary = base64_decode($base64_data);
+        // Memory-Limit erhöhen für große Bilder (wenn möglich)
+        $memory_limit = ini_get('memory_limit');
+        if ($memory_limit !== '-1') {
+            @ini_set('memory_limit', '512M');
+        }
+
+        $image_binary = base64_decode($base64_data, true);
         if (false === $image_binary) {
-            return new WP_Error('gig_decode_error', __('Dekodierung fehlgeschlagen.', 'gemini-image-generator'));
+            return new WP_Error('gig_decode_error', __('Dekodierung fehlgeschlagen. Ungültige Base64-Daten.', 'gemini-image-generator'));
+        }
+
+        // Prüfe Dateigröße (max 50MB)
+        $image_size = strlen($image_binary);
+        if ($image_size > 50 * 1024 * 1024) {
+            return new WP_Error('gig_file_too_large', __('Bild ist zu groß (max. 50MB).', 'gemini-image-generator'));
         }
 
         $upload_dir = wp_upload_dir();
@@ -86,6 +107,15 @@ class GIG_Image_Handler {
 
         // SEO-Metadaten setzen
         $this->set_seo_metadata($attachment_id, $metadata);
+
+        // Action Hook für Entwickler
+        do_action('gig_image_generated', $attachment_id, $post_id, $prompt);
+
+        // Memory wieder freigeben
+        unset($image_binary);
+        if (function_exists('gc_collect_cycles')) {
+            gc_collect_cycles();
+        }
 
         return $attachment_id;
     }
@@ -330,8 +360,22 @@ class GIG_Image_Handler {
         }
     }
 
+    /**
+     * Setzt ein Bild als Featured Image
+     * 
+     * @param int $post_id Post-ID
+     * @param int $attachment_id Attachment-ID
+     * @return bool|int Post-Meta-ID bei Erfolg, false bei Fehler
+     */
     public function set_featured_image($post_id, $attachment_id) {
-        return set_post_thumbnail($post_id, $attachment_id);
+        $result = set_post_thumbnail($post_id, $attachment_id);
+        
+        if ($result) {
+            // Action Hook für Entwickler
+            do_action('gig_featured_image_set', $post_id, $attachment_id);
+        }
+        
+        return $result;
     }
 
     private function get_settings($override = array()) {

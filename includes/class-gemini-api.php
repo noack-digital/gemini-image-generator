@@ -93,27 +93,50 @@ class GIG_Gemini_API {
 
     /**
      * Holt SEO-Keyword aus RankMath oder analysiert selbst
+     * 
+     * @param int $post_id Post-ID
+     * @return string SEO-Keyword
      */
     public function get_seo_keyword($post_id) {
         $post = get_post($post_id);
         if (!$post) return '';
+
+        // Cache-Check (1 Stunde Cache)
+        $cache_key = 'gig_seo_keyword_' . $post_id;
+        $cached = get_transient($cache_key);
+        if (false !== $cached) {
+            return $cached;
+        }
+
+        $keyword = '';
 
         // 1. Versuche RankMath Focus Keyword
         $rankmath_keyword = get_post_meta($post_id, 'rank_math_focus_keyword', true);
         if (!empty($rankmath_keyword)) {
             // RankMath kann mehrere Keywords haben, nimm das erste
             $keywords = explode(',', $rankmath_keyword);
-            return trim($keywords[0]);
+            $keyword = trim($keywords[0]);
         }
 
         // 2. Versuche Yoast SEO als Fallback
-        $yoast_keyword = get_post_meta($post_id, '_yoast_wpseo_focuskw', true);
-        if (!empty($yoast_keyword)) {
-            return trim($yoast_keyword);
+        if (empty($keyword)) {
+            $yoast_keyword = get_post_meta($post_id, '_yoast_wpseo_focuskw', true);
+            if (!empty($yoast_keyword)) {
+                $keyword = trim($yoast_keyword);
+            }
         }
 
-        // 3. Analysiere selbst mit KI
-        return $this->analyze_keyword($post->post_title, $post->post_content);
+        // 3. Analysiere selbst mit KI (nur wenn keine SEO-Plugins vorhanden)
+        if (empty($keyword)) {
+            $keyword = $this->analyze_keyword($post->post_title, $post->post_content);
+        }
+
+        // Cache speichern
+        if (!empty($keyword)) {
+            set_transient($cache_key, $keyword, HOUR_IN_SECONDS);
+        }
+
+        return $keyword;
     }
 
     /**
@@ -406,9 +429,15 @@ class GIG_Gemini_API {
     }
 
     /**
-     * API Request
+     * API Request mit Retry-Logic und verbesserter Fehlerbehandlung
+     * 
+     * @param string $model Modell-Name
+     * @param array $body Request-Body
+     * @param string $api_version API-Version
+     * @param int $retries Anzahl der Wiederholungsversuche
+     * @return array|WP_Error Response-Daten oder Fehler
      */
-    private function post_to_gemini($model, $body, $api_version = 'v1beta') {
+    private function post_to_gemini($model, $body, $api_version = 'v1beta', $retries = 2) {
         $url = sprintf(
             'https://generativelanguage.googleapis.com/%s/models/%s:generateContent?key=%s',
             $api_version,
@@ -416,25 +445,73 @@ class GIG_Gemini_API {
             rawurlencode($this->settings['api_key'])
         );
 
-        $response = wp_remote_post($url, array(
+        $args = array(
             'headers' => array('Content-Type' => 'application/json'),
             'timeout' => 120,
             'body'    => wp_json_encode($body),
-        ));
+            'sslverify' => true,
+            'redirection' => 5,
+            'httpversion' => '1.1',
+        );
 
-        if (is_wp_error($response)) {
-            return $response;
+        $last_error = null;
+
+        for ($attempt = 0; $attempt <= $retries; $attempt++) {
+            if ($attempt > 0) {
+                // Exponential backoff: 1s, 2s, 4s
+                sleep(pow(2, $attempt - 1));
+            }
+
+            $response = wp_remote_post($url, $args);
+
+            if (is_wp_error($response)) {
+                $last_error = $response;
+                $error_code = $response->get_error_code();
+                
+                // Bei Timeout oder Verbindungsfehler: Retry
+                if (in_array($error_code, array('http_request_failed', 'timeout'), true) && $attempt < $retries) {
+                    continue;
+                }
+                
+                return $response;
+            }
+
+            $code = wp_remote_retrieve_response_code($response);
+            $body_text = wp_remote_retrieve_body($response);
+            $data = json_decode($body_text, true);
+
+            // 200 = Erfolg
+            if ($code === 200 && !empty($data)) {
+                return $data;
+            }
+
+            // 429 = Rate Limit - Retry mit längerer Pause
+            if ($code === 429 && $attempt < $retries) {
+                sleep(5 * ($attempt + 1));
+                continue;
+            }
+
+            // 500-599 = Server-Fehler - Retry
+            if ($code >= 500 && $code < 600 && $attempt < $retries) {
+                continue;
+            }
+
+            // Andere Fehler
+            $message = __('API-Fehler', 'gemini-image-generator');
+            if (isset($data['error']['message'])) {
+                $message = $data['error']['message'];
+            } elseif (!empty($body_text)) {
+                $message = sprintf(__('API-Fehler (Code: %d)', 'gemini-image-generator'), $code);
+            }
+
+            return new WP_Error('gig_api_error', $message, array(
+                'status_code' => $code,
+                'response' => $data,
+            ));
         }
 
-        $code = wp_remote_retrieve_response_code($response);
-        $data = json_decode(wp_remote_retrieve_body($response), true);
-
-        if ($code !== 200) {
-            $message = isset($data['error']['message']) ? $data['error']['message'] : __('API-Fehler', 'gemini-image-generator');
-            return new WP_Error('gig_api_error', $message);
-        }
-
-        return $data;
+        // Alle Retries fehlgeschlagen
+        return $last_error ?: new WP_Error('gig_api_error', __('API-Request fehlgeschlagen nach mehreren Versuchen.', 'gemini-image-generator'));
     }
 
     /**
