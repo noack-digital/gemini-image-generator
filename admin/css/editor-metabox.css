@@ -1,0 +1,274 @@
+.gig-metabox {
+    padding: 5px 0;
+}
+
+.gig-keyword-info {
+    background: #f0f6fc;
+    border-left: 3px solid #2271b1;
+    padding: 8px 10px;
+    margin-bottom: 12px;
+    border-radius: 0 4px 4px 0;
+}
+
+.gig-keyword-info small {
+    color: #50575e;
+}
+
+.gig-keyword-info strong {
+    color: #2271b1;
+}
+
+.gig-section {
+    margin-bottom: 12px;
+}
+
+.gig-section label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 4px;
+    font-size: 11px;
+    text-transform: uppercase;
+    color: #666;
+}
+
+.gig-row {
+    display: flex;
+    gap: 8px;
+}
+
+.gig-col {
+    flex: 1;
+}
+
+.gig-prompt-field {
+    margin-top: 8px;
+    font-size: 13px;
+    resize: vertical;
+}
+
+.gig-generate-prompt,
+.gig-generate-image {
+    width: 100%;
+    margin-bottom: 8px;
+}
+
+.gig-generate-image {
+    height: 36px;
+    font-size: 14px;
+}
+
+.gig-details {
+    margin: 12px 0;
+    padding: 8px;
+    background: #f9f9f9;
+    border-radius: 4px;
+}
+
+.gig-details summary {
+    cursor: pointer;
+    font-size: 12px;
+    color: #666;
+    outline: none;
+}
+
+.gig-details[open] summary {
+    margin-bottom: 10px;
+}
+
+.gig-details .gig-section {
+    margin-bottom: 8px;
+}
+
+.gig-status {
+    min-height: 20px;
+    font-size: 13px;
+    margin: 8px 0;
+    padding: 0 2px;
+}
+
+.gig-status.success {
+    color: #00a32a;
+}
+
+.gig-status.error {
+    color: #d63638;
+}
+
+.gig-status.loading {
+    color: #2271b1;
+}
+
+.gig-preview {
+    margin-top: 12px;
+    text-align: center;
+}
+
+.gig-preview-image {
+    max-width: 100%;
+    height: auto;
+    border-radius: 4px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+    cursor: zoom-in;
+}
+
+.gig-preview-actions {
+    display: flex;
+    gap: 6px;
+    justify-content: center;
+    margin-top: 10px;
+    flex-wrap: wrap;
+}
+
+.gig-preview-actions .button {
+    flex: 1;
+    min-width: 100px;
+}
+
+.gig-sections {
+    margin-top: 15px;
+}
+
+.gig-sections-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.gig-sections-header strong {
+    font-size: 13px;
+}
+
+.gig-sections-placeholder {
+    font-size: 12px;
+    color: #666;
+    background: #fafafa;
+    border: 1px dashed #dcdcde;
+    padding: 10px;
+    border-radius: 4px;
+}
+
+.gig-section-card {
+    border: 1px solid #dcdcde;
+    border-radius: 4px;
+    padding: 0;
+    margin-bottom: 10px;
+    background: #fff;
+    overflow: hidden;
+}
+
+.gig-section-card.loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.gig-section-card-toggle {
+    width: 100%;
+    text-align: left;
+    background: #f7f7f7;
+    border: 0;
+    padding: 10px 12px;
+    font-weight: 600;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+}
+
+.gig-section-card-toggle:focus {
+    outline: 2px solid #2271b1;
+    outline-offset: -2px;
+}
+
+.gig-section-card-icon {
+    font-size: 16px;
+    line-height: 1;
+}
+
+.gig-section-card-body {
+    padding: 10px 12px 12px;
+}
+
+.gig-section-card-excerpt {
+    font-size: 12px;
+    color: #555;
+    margin-bottom: 8px;
+}
+
+.gig-section-card-actions {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 6px;
+}
+
+.gig-section-card textarea {
+    width: 100%;
+    font-size: 12px;
+}
+
+.gig-section-advanced {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 6px;
+    margin: 8px 0;
+}
+
+.gig-section-advanced label {
+    font-size: 11px;
+    text-transform: uppercase;
+    color: #666;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.gig-section-advanced input,
+.gig-section-advanced select {
+    font-size: 12px;
+}
+
+.gig-section-preview {
+    margin-top: 8px;
+    text-align: center;
+}
+
+.gig-section-preview img {
+    max-width: 100%;
+    border-radius: 4px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+    cursor: zoom-in;
+}
+
+.gig-section-image {
+    margin: 10px 0;
+    text-align: center;
+}
+
+.gig-section-image img {
+    max-width: 100%;
+    height: auto;
+}
+
+.gig-section-image figcaption {
+    font-size: 12px;
+    color: #666;
+}
+
+/* Loading Animation */
+@keyframes gig-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+.gig-metabox.loading .gig-generate-image,
+.gig-metabox.loading .gig-generate-prompt {
+    animation: gig-pulse 1.5s ease-in-out infinite;
+}
+
+/* Responsive */
+@media (max-width: 782px) {
+    .gig-row {
+        flex-direction: column;
+        gap: 12px;
+    }
+}
