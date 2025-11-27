@@ -47,6 +47,22 @@ und dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ---
 
+## [Unreleased]
+
+### Hinzugefügt
+- Kontext-bewusste Prompt-Generierung (Kategorien, Tags, Custom Taxonomien)
+- Bulk-Bildgenerierung für mehrere Artikel
+- Filter-Hooks für Entwickler (gig_prompt_before_generation, gig_image_params, gig_image_metadata)
+- Action-Hooks für Entwickler (gig_image_generated, gig_featured_image_set)
+- Caching für SEO-Keywords (Transients, 1 Stunde)
+- Retry-Logic für API-Requests mit Exponential Backoff
+- Verbesserte Fehlerbehandlung und Memory-Optimierungen
+
+### Geändert
+- Prompt-Generierung nutzt jetzt Kontext-Informationen (Kategorien, Tags)
+- API-Requests haben jetzt automatische Retry-Logic bei Fehlern
+- Bessere Fehlermeldungen für API-Requests
+
 ## Zukünftige Versionen
 
 ### [1.1.0] - Geplant
