@@ -25,6 +25,7 @@ require_once GIG_PLUGIN_DIR . 'includes/class-prompt-generator.php';
 require_once GIG_PLUGIN_DIR . 'includes/class-image-handler.php';
 require_once GIG_PLUGIN_DIR . 'admin/class-admin-settings.php';
 require_once GIG_PLUGIN_DIR . 'admin/class-editor-metabox.php';
+require_once GIG_PLUGIN_DIR . 'admin/class-bulk-generator.php';
 
 /**
  * Haupt-Plugin-Klasse
@@ -47,6 +48,7 @@ final class GIG_Plugin {
         if (is_admin()) {
             new GIG_Admin_Settings($this->gemini_api);
             new GIG_Editor_Metabox($this->gemini_api, $this->prompt_generator, $this->image_handler);
+            new GIG_Bulk_Generator($this->gemini_api, $this->prompt_generator, $this->image_handler);
         }
     }
 
