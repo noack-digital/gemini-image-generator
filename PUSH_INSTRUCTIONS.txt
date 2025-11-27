@@ -1,0 +1,40 @@
+═══════════════════════════════════════════════════════════════
+  Repository zu GitHub pushen - Anleitung
+═══════════════════════════════════════════════════════════════
+
+Repository-URL: https://github.com/noack-digital/gemini-image-generator
+
+OPTION 1: Mit Personal Access Token (HTTPS)
+───────────────────────────────────────────
+1. Erstellen Sie ein Personal Access Token:
+   → https://github.com/settings/tokens/new
+   → Berechtigung: "repo" aktivieren
+   → Token kopieren
+
+2. Pushen Sie mit Token:
+   cd /var/www/vhosts/digital-magazin.de/staging.digital-magazin.de/wp-content/plugins/gemini-image-generator
+   git remote set-url origin https://YOUR_TOKEN@github.com/noack-digital/gemini-image-generator.git
+   git push -u origin master
+
+   ODER interaktiv:
+   git remote set-url origin https://github.com/noack-digital/gemini-image-generator.git
+   git push -u origin master
+   (Bei Username: Ihr GitHub-Username eingeben)
+   (Bei Password: Personal Access Token einfügen)
+
+OPTION 2: Mit SSH (falls konfiguriert)
+───────────────────────────────────────
+git remote set-url origin git@github.com:noack-digital/gemini-image-generator.git
+git push -u origin master
+
+OPTION 3: GitHub CLI (falls installiert)
+─────────────────────────────────────────
+gh auth login
+git push -u origin master
+
+═══════════════════════════════════════════════════════════════
+Aktueller Status:
+- Remote konfiguriert: git@github.com:noack-digital/gemini-image-generator.git
+- 8 Commits bereit zum Pushen
+- 18 Dateien inkl. vollständiger Dokumentation
+═══════════════════════════════════════════════════════════════
