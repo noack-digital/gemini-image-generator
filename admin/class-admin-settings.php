@@ -180,13 +180,17 @@ class GIG_Admin_Settings {
 
     public function render_text_model_field() {
         $settings = $this->gemini_api->get_settings();
-        $value = $settings['text_model'] ?? 'gemini-2.0-flash';
+        $value = $settings['text_model'] ?? 'gemini-2.5-flash';
+        $models = GIG_Gemini_API::get_supported_text_models();
         ?>
         <select name="<?php echo esc_attr(GIG_Gemini_API::OPTION_NAME); ?>[text_model]">
-            <option value="gemini-2.0-flash" <?php selected($value, 'gemini-2.0-flash'); ?>>Gemini 2.0 Flash (schnell)</option>
-            <option value="gemini-3-pro-preview" <?php selected($value, 'gemini-3-pro-preview'); ?>>Gemini 3 Pro (beste Qualität)</option>
+            <?php foreach ($models as $key => $label): ?>
+                <option value="<?php echo esc_attr($key); ?>" <?php selected($value, $key); ?>>
+                    <?php echo esc_html($label); ?>
+                </option>
+            <?php endforeach; ?>
         </select>
-        <p class="description"><?php esc_html_e('Für Prompt-Generierung und Keyword-Analyse.', 'gemini-image-generator'); ?></p>
+        <p class="description"><?php esc_html_e('Für Prompt-Generierung, Keyword-Analyse und Caption-Generierung. Bei Rate-Limit-Fehlern (429) auf ein anderes Modell wechseln – Tier-Limits sind modellspezifisch.', 'gemini-image-generator'); ?></p>
         <?php
     }
 

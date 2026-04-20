@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Gemini Image Generator
  * Description: Generiert KI-basierte Artikelbilder mit Google Gemini 3 Pro Image direkt aus dem Editor.
- * Version: 1.1.0
+ * Version: 1.2.0
  * Author: Digital Magazin
  * Text Domain: gemini-image-generator
  * Domain Path: /languages
@@ -14,7 +14,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('GIG_PLUGIN_VERSION', '1.1.0');
+define('GIG_PLUGIN_VERSION', '1.2.0');
 define('GIG_PLUGIN_FILE', __FILE__);
 define('GIG_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('GIG_PLUGIN_URL', plugin_dir_url(__FILE__));

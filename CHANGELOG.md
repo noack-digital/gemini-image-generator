@@ -5,6 +5,16 @@ Alle wichtigen Änderungen an diesem Plugin werden in dieser Datei dokumentiert.
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/),
 und dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 
+## [1.2.0] - 2026-04-20
+
+### Hinzugefügt
+- Textmodell-Dropdown deutlich erweitert: `gemini-2.5-flash`, `gemini-flash-latest`, `gemini-2.5-pro`, `gemini-3-pro-preview`, `gemini-2.0-flash`. Vorher nur zwei Optionen.
+- Neue Helper-Methode `GIG_Gemini_API::get_supported_text_models()` (analog zu `get_supported_image_models()`).
+- Beschreibung beim Textmodell weist auf modellspezifische Rate-Limits hin – bei 429-Fehlern können Nutzer auf ein anderes Modell wechseln.
+
+### Geändert
+- **Default-Textmodell von `gemini-2.0-flash` auf `gemini-2.5-flash` geändert.** Grund: `gemini-2.0-flash` ist auf manchen Paid-Tier-1-Keys aktuell stark gedrosselt (in Tests 0/8 Requests erfolgreich), während `gemini-2.5-flash` und neuere Modelle einwandfrei laufen (8/8). Bestehende Installationen bleiben auf ihrer konfigurierten Auswahl und können manuell wechseln.
+
 ## [1.1.0] - 2026-04-20
 
 ### Behoben

@@ -19,6 +19,21 @@ class GIG_Gemini_API {
             'api_version' => 'v1beta',
             'type' => 'text',
         ),
+        'gemini-2.5-flash' => array(
+            'id' => 'gemini-2.5-flash',
+            'api_version' => 'v1beta',
+            'type' => 'text',
+        ),
+        'gemini-flash-latest' => array(
+            'id' => 'gemini-flash-latest',
+            'api_version' => 'v1beta',
+            'type' => 'text',
+        ),
+        'gemini-2.5-pro' => array(
+            'id' => 'gemini-2.5-pro',
+            'api_version' => 'v1beta',
+            'type' => 'text',
+        ),
         'gemini-3-pro-preview' => array(
             'id' => 'gemini-3-pro-preview',
             'api_version' => 'v1beta',
@@ -58,6 +73,19 @@ class GIG_Gemini_API {
         );
     }
 
+    /**
+     * Gibt die auswählbaren Text-Modelle für das Admin-UI zurück.
+     */
+    public static function get_supported_text_models() {
+        return array(
+            'gemini-2.5-flash'     => 'Gemini 2.5 Flash (empfohlen, schnell & stabil)',
+            'gemini-flash-latest'  => 'Gemini Flash Latest (immer aktuellste Flash-Version)',
+            'gemini-2.5-pro'       => 'Gemini 2.5 Pro (beste Qualität)',
+            'gemini-3-pro-preview' => 'Gemini 3 Pro Preview (neu, Preview)',
+            'gemini-2.0-flash'     => 'Gemini 2.0 Flash (Legacy, kann auf manchen Keys stark gedrosselt sein)',
+        );
+    }
+
     public function __construct() {
         $this->settings = $this->get_settings();
     }
@@ -69,7 +97,7 @@ class GIG_Gemini_API {
         $defaults = array(
             // API
             'api_key'           => '',
-            'text_model'        => 'gemini-2.0-flash',
+            'text_model'        => 'gemini-2.5-flash',
             'image_model'       => 'gemini-3-pro-image-preview',
             
             // Bild-Defaults
