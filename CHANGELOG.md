@@ -5,6 +5,22 @@ Alle wichtigen Änderungen an diesem Plugin werden in dieser Datei dokumentiert.
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/),
 und dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 
+## [1.1.0] - 2026-04-20
+
+### Behoben
+- Bildgenerierung schlug mit „Request contains an invalid argument" fehl, weil der Parameter `imageConfig.imageSize` vom Modell `gemini-3-pro-image-preview` nicht akzeptiert wird. Der Parameter wurde aus dem Request entfernt.
+- Der WordPress-Auto-Draft-Platzhalter „Automatisch gespeicherter Entwurf" erschien in Alt-Text, Bildtitel und Accessibility-Beschreibung. `sanitize_post_title()` entfernt den Platzhalter jetzt sowohl als kompletten Titel als auch als Präfix vor echten Titeln (case-insensitive, inkl. Trennzeichen `:`, `–`, `—`, `-`, `|`). Die Bereinigung greift auch bei der Prompt-Generierung für Gemini, damit der Platzhalter nicht mehr indirekt in die KI-Antworten leckt.
+- Transient-Cache für SEO-Keywords wird bei Auto-Draft-Posts nicht mehr gespeichert (sonst würde ein aus dem Platzhalter abgeleitetes Keyword 1 Stunde hängen bleiben).
+
+### Hinzugefügt
+- Neue Einstellung **Bildmodell** (Dropdown) zur Auswahl des Gemini-Image-Modells: `gemini-3-pro-image-preview`, `gemini-3.1-flash-image-preview`, `gemini-2.5-flash-image`, `nano-banana-pro-preview`. Vorher war das Modell hartkodiert.
+- Neue Einstellung **Caption-Prompt**: Textarea im SEO-Abschnitt für einen System-Prompt, der die KI-Generierung des Bild-Untertitels steuert (Stil, Länge, Tonalität). Fokus-Keywords, Artikel-Titel und Bildmotiv werden automatisch als Kontext übergeben. Fällt bei leerem Prompt oder API-Fehlern auf `default_caption` zurück.
+- Neue Methode `GIG_Gemini_API::get_rankmath_keywords()`: Liefert **alle** RankMath-Fokus-Keywords als Array (Fallback auf Yoast). Der Alt-Text enthält jetzt immer sämtliche Fokus-Keywords, nicht nur das erste.
+
+### Geändert
+- Feld „Standard-Untertitel (Caption)" umbenannt in „Fallback-Untertitel" — wird nur noch verwendet, wenn kein Caption-Prompt gesetzt ist oder die KI-Generierung fehlschlägt.
+- Alt-Text-Logik neu priorisiert: Wenn RankMath-Keywords vorhanden sind, werden sie vollständig aufgenommen; der Post-Titel wird nur angehängt, wenn das 125-Zeichen-Limit es erlaubt und er zusätzliche Info liefert.
+
 ## [1.0.0] - 2024-11-27
 
 ### Hinzugefügt

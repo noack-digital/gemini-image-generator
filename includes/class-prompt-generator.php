@@ -29,7 +29,7 @@ class GIG_Prompt_Generator {
             return new WP_Error('gig_no_post', __('Beitrag nicht gefunden.', 'gemini-image-generator'));
         }
 
-        return $this->generate_prompt_from_content($post->post_title, $post->post_content, $post_id);
+        return $this->generate_prompt_from_content(GIG_Gemini_API::sanitize_post_title($post->post_title), $post->post_content, $post_id);
     }
 
     /**
@@ -52,11 +52,20 @@ class GIG_Prompt_Generator {
         // System-Prompt aus Einstellungen
         $system_instruction = $this->get_system_prompt();
 
-        $prompt = sprintf(
-            "Analysiere diesen Artikel und erstelle einen detaillierten Bildprompt für ein Titelbild.\n\nTitel: %s\n\nInhalt:\n%s",
-            $title,
-            $clean_content
-        );
+        $title = GIG_Gemini_API::sanitize_post_title($title);
+
+        if ($title !== '') {
+            $prompt = sprintf(
+                "Analysiere diesen Artikel und erstelle einen detaillierten Bildprompt für ein Titelbild.\n\nTitel: %s\n\nInhalt:\n%s",
+                $title,
+                $clean_content
+            );
+        } else {
+            $prompt = sprintf(
+                "Analysiere diesen Artikel und erstelle einen detaillierten Bildprompt für ein Titelbild.\n\nInhalt:\n%s",
+                $clean_content
+            );
+        }
 
         // Kontext hinzufügen, falls vorhanden
         if (!empty($context)) {
@@ -176,12 +185,22 @@ class GIG_Prompt_Generator {
         $system_instruction = $this->get_system_prompt();
         $clean_content = $this->sanitize_content($section['excerpt'], 2000);
 
-        $prompt = sprintf(
-            "Analysiere folgenden Abschnitt (Überschrift + Inhalt) und erstelle einen detaillierten Bildprompt, der diese Passage illustriert. Antworte nur mit dem Prompt.\n\nArtikel: %s\n\nÜberschrift: %s\n\nAbschnitt:\n%s",
-            $post->post_title,
-            $section['title'],
-            $clean_content
-        );
+        $article_title = GIG_Gemini_API::sanitize_post_title($post->post_title);
+
+        if ($article_title !== '') {
+            $prompt = sprintf(
+                "Analysiere folgenden Abschnitt (Überschrift + Inhalt) und erstelle einen detaillierten Bildprompt, der diese Passage illustriert. Antworte nur mit dem Prompt.\n\nArtikel: %s\n\nÜberschrift: %s\n\nAbschnitt:\n%s",
+                $article_title,
+                $section['title'],
+                $clean_content
+            );
+        } else {
+            $prompt = sprintf(
+                "Analysiere folgenden Abschnitt (Überschrift + Inhalt) und erstelle einen detaillierten Bildprompt, der diese Passage illustriert. Antworte nur mit dem Prompt.\n\nÜberschrift: %s\n\nAbschnitt:\n%s",
+                $section['title'],
+                $clean_content
+            );
+        }
 
         $response = $this->gemini_api->generate_text($prompt, $system_instruction);
 

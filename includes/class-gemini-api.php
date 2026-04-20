@@ -29,7 +29,34 @@ class GIG_Gemini_API {
             'api_version' => 'v1beta',
             'type' => 'image',
         ),
+        'gemini-3.1-flash-image-preview' => array(
+            'id' => 'gemini-3.1-flash-image-preview',
+            'api_version' => 'v1beta',
+            'type' => 'image',
+        ),
+        'gemini-2.5-flash-image' => array(
+            'id' => 'gemini-2.5-flash-image',
+            'api_version' => 'v1beta',
+            'type' => 'image',
+        ),
+        'nano-banana-pro-preview' => array(
+            'id' => 'nano-banana-pro-preview',
+            'api_version' => 'v1beta',
+            'type' => 'image',
+        ),
     );
+
+    /**
+     * Gibt die auswählbaren Image-Modelle für das Admin-UI zurück.
+     */
+    public static function get_supported_image_models() {
+        return array(
+            'gemini-3-pro-image-preview'      => 'Gemini 3 Pro Image (beste Qualität)',
+            'gemini-3.1-flash-image-preview'  => 'Gemini 3.1 Flash Image (schnell)',
+            'gemini-2.5-flash-image'          => 'Gemini 2.5 Flash Image (stabil)',
+            'nano-banana-pro-preview'         => 'Nano Banana Pro (Preview)',
+        );
+    }
 
     public function __construct() {
         $this->settings = $this->get_settings();
@@ -72,6 +99,7 @@ class GIG_Gemini_API {
             // SEO
             'auto_seo_meta'     => true,
             'default_caption'   => 'Bild: Generiert mit AI',
+            'caption_prompt'    => 'Du schreibst kurze, prägnante Bild-Untertitel (Captions) für ein digitales Online-Magazin. Maximal 15 Wörter, ein Satz, ohne Emojis, ohne Anführungszeichen. Nimm Bezug auf das Motiv des Bildes und – wenn vorhanden – auf das Fokus-Keyword. Antworte nur mit dem fertigen Untertitel.',
         );
 
         $stored = get_option(self::OPTION_NAME, array());
@@ -92,8 +120,81 @@ class GIG_Gemini_API {
     }
 
     /**
+     * Prüft, ob ein Post-Titel nur ein WordPress-Platzhalter ist
+     * (Auto-Draft). Solche Titel dürfen nicht in Metadaten oder Prompts einfließen.
+     */
+    public static function is_placeholder_title($title) {
+        if (!is_string($title) || trim($title) === '') {
+            return true;
+        }
+        $normalized = strtolower(trim($title));
+        $placeholders = array(
+            'auto draft',
+            'auto-draft',
+            'automatisch gespeicherter entwurf',
+            '(kein titel)',
+            '(no title)',
+        );
+        return in_array($normalized, $placeholders, true);
+    }
+
+    /**
+     * Bereinigt den Post-Titel:
+     *  - Ist der Titel insgesamt ein Platzhalter → leerer String.
+     *  - Ist einem echten Titel ein Platzhalter als Präfix vorangestellt
+     *    (z.B. "Automatisch gespeicherter Entwurf: Echter Titel"), wird
+     *    dieses Präfix inkl. Trennzeichen (: – — - |) entfernt.
+     */
+    public static function sanitize_post_title($title) {
+        if (self::is_placeholder_title($title)) {
+            return '';
+        }
+
+        $placeholders = array(
+            'automatisch gespeicherter entwurf',
+            'auto draft',
+            'auto-draft',
+            '(kein titel)',
+            '(no title)',
+        );
+
+        $trimmed = ltrim((string) $title);
+        foreach ($placeholders as $ph) {
+            $ph_len = strlen($ph);
+            if (strlen($trimmed) > $ph_len && strcasecmp(substr($trimmed, 0, $ph_len), $ph) === 0) {
+                $rest = ltrim(substr($trimmed, $ph_len));
+                // Trennzeichen nach dem Platzhalter entfernen
+                $rest = preg_replace('/^[:\-–—|]+\s*/u', '', $rest);
+                if ($rest !== '' && !self::is_placeholder_title($rest)) {
+                    return $rest;
+                }
+            }
+        }
+
+        return $title;
+    }
+
+    /**
+     * Liefert alle RankMath- (bzw. Yoast-) Fokus-Keywords als Array.
+     *
+     * @param int $post_id
+     * @return string[]
+     */
+    public function get_rankmath_keywords($post_id) {
+        $raw = get_post_meta($post_id, 'rank_math_focus_keyword', true);
+        if (empty($raw)) {
+            $raw = get_post_meta($post_id, '_yoast_wpseo_focuskw', true);
+        }
+        if (empty($raw)) {
+            return array();
+        }
+        $parts = array_map('trim', explode(',', (string) $raw));
+        return array_values(array_filter($parts, 'strlen'));
+    }
+
+    /**
      * Holt SEO-Keyword aus RankMath oder analysiert selbst
-     * 
+     *
      * @param int $post_id Post-ID
      * @return string SEO-Keyword
      */
@@ -128,11 +229,16 @@ class GIG_Gemini_API {
 
         // 3. Analysiere selbst mit KI (nur wenn keine SEO-Plugins vorhanden)
         if (empty($keyword)) {
-            $keyword = $this->analyze_keyword($post->post_title, $post->post_content);
+            $clean_title = self::sanitize_post_title($post->post_title);
+            // Bei Auto-Draft ohne Content liefert die Analyse sinnlose Ergebnisse
+            if ($clean_title !== '' || !empty(trim(wp_strip_all_tags($post->post_content)))) {
+                $keyword = $this->analyze_keyword($clean_title, $post->post_content);
+            }
         }
 
-        // Cache speichern
-        if (!empty($keyword)) {
+        // Cache nur speichern, wenn der Post bereits einen echten Titel hat
+        // (sonst würde ein Auto-Draft-Ergebnis für 1 Stunde hängenbleiben).
+        if (!empty($keyword) && !self::is_placeholder_title($post->post_title)) {
             set_transient($cache_key, $keyword, HOUR_IN_SECONDS);
         }
 
@@ -222,37 +328,115 @@ class GIG_Gemini_API {
      * Generiert SEO-optimierte Bild-Metadaten
      */
     public function generate_image_metadata($post_id, $image_prompt) {
+        $rm_keywords = $this->get_rankmath_keywords($post_id);
         $keyword = $this->get_seo_keyword($post_id);
         $post = get_post($post_id);
-        $post_title = $post ? $post->post_title : '';
+        $post_title = $post ? self::sanitize_post_title($post->post_title) : '';
         $settings = $this->get_settings();
 
         // Generiere Beschreibung für Barrierefreiheit
         $description = $this->generate_accessibility_description($image_prompt, $keyword);
 
         return array(
-            'alt_text'    => $this->generate_alt_text($keyword, $post_title),
+            'alt_text'    => $this->generate_alt_text($keyword, $post_title, $rm_keywords),
             'title'       => $this->generate_image_title($keyword, $post_title),
-            'caption'     => $settings['default_caption'],
+            'caption'     => $this->generate_caption($image_prompt, $keyword, $post_title, $rm_keywords),
             'description' => $description,
             'keyword'     => $keyword,
         );
     }
 
     /**
-     * Generiert Alt-Text mit Keyword
+     * Generiert einen Bild-Untertitel (Caption) via Gemini.
+     * Der eigentliche System-Prompt kommt aus den Plugin-Einstellungen
+     * (`caption_prompt`), damit Redakteure den Stil steuern können.
+     * Fällt bei fehlendem Prompt, fehlender API oder Fehlern auf
+     * `default_caption` zurück.
      */
-    private function generate_alt_text($keyword, $post_title) {
-        if (empty($keyword)) {
-            return wp_strip_all_tags(substr($post_title, 0, 125));
+    private function generate_caption($image_prompt, $keyword, $post_title, $rm_keywords = array()) {
+        $fallback = isset($this->settings['default_caption']) ? $this->settings['default_caption'] : '';
+        $system_instruction = isset($this->settings['caption_prompt']) ? trim($this->settings['caption_prompt']) : '';
+
+        if ($system_instruction === '' || !$this->is_configured()) {
+            return $fallback;
         }
 
-        // Kurzer, prägnanter Alt-Text
+        $context_parts = array();
+        if (!empty($rm_keywords)) {
+            $context_parts[] = 'Fokus-Keywords: ' . implode(', ', $rm_keywords);
+        } elseif (!empty($keyword)) {
+            $context_parts[] = 'Fokus-Keyword: ' . $keyword;
+        }
+        if (!empty($post_title)) {
+            $context_parts[] = 'Artikel-Titel: ' . $post_title;
+        }
+        if (!empty($image_prompt)) {
+            $context_parts[] = 'Bildmotiv (Prompt): ' . $image_prompt;
+        }
+
+        $user_prompt = "Erstelle jetzt den Bild-Untertitel basierend auf diesen Informationen:\n\n" . implode("\n", $context_parts);
+
+        $result = $this->generate_text($user_prompt, $system_instruction);
+
+        if (is_wp_error($result)) {
+            return $fallback;
+        }
+
+        $caption = trim(wp_strip_all_tags($result));
+        $caption = trim($caption, " \t\n\r\0\x0B\"'`");
+
+        if ($caption === '') {
+            return $fallback;
+        }
+
+        // Harte Obergrenze, damit keine ausufernden Texte ins Caption-Feld geraten.
+        if (mb_strlen($caption) > 250) {
+            $caption = mb_substr($caption, 0, 247) . '…';
+        }
+
+        return $caption;
+    }
+
+    /**
+     * Generiert Alt-Text. Wenn RankMath-Fokus-Keywords vorhanden sind,
+     * müssen ALLE darin enthalten sein.
+     */
+    private function generate_alt_text($keyword, $post_title, $rm_keywords = array()) {
+        $post_title = wp_strip_all_tags((string) $post_title);
+
+        // 1. RankMath-Keywords haben Vorrang und müssen vollständig im Alt-Text sein.
+        if (!empty($rm_keywords)) {
+            $alt = ucfirst(implode(', ', $rm_keywords));
+
+            // Post-Titel nur anhängen, wenn er echte Zusatzinfo liefert.
+            if ($post_title !== '') {
+                $already_covered = false;
+                foreach ($rm_keywords as $kw) {
+                    if (stripos($post_title, $kw) !== false) {
+                        $already_covered = true;
+                        break;
+                    }
+                }
+                if (!$already_covered) {
+                    $candidate = $alt . ' – ' . $post_title;
+                    // Nur übernehmen, wenn alle Keywords im 125-Zeichen-Limit erhalten bleiben.
+                    if (strlen($candidate) <= 125) {
+                        $alt = $candidate;
+                    }
+                }
+            }
+
+            return substr($alt, 0, 125);
+        }
+
+        // 2. Fallback: einzelnes (analysiertes) Keyword
+        if (empty($keyword)) {
+            return substr($post_title, 0, 125);
+        }
+
         $alt = ucfirst($keyword);
-        
-        // Wenn Titel zusätzliche Info bietet
-        if (!empty($post_title) && stripos($post_title, $keyword) === false) {
-            $alt .= ' – ' . wp_strip_all_tags(substr($post_title, 0, 80));
+        if ($post_title !== '' && stripos($post_title, $keyword) === false) {
+            $alt .= ' – ' . substr($post_title, 0, 80);
         }
 
         return substr($alt, 0, 125);
@@ -376,10 +560,8 @@ class GIG_Gemini_API {
 
         $enhanced_prompt = $this->enhance_prompt($prompt, $params);
 
-        $model_config = $this->get_model_config('gemini-3-pro-image-preview', 'image');
-
-        $size_map = array('medium' => '1080p', 'high' => '4K');
-        $image_size = isset($size_map[$params['quality']]) ? $size_map[$params['quality']] : '4K';
+        $image_model_key = !empty($this->settings['image_model']) ? $this->settings['image_model'] : 'gemini-3-pro-image-preview';
+        $model_config = $this->get_model_config($image_model_key, 'image');
 
         $body = array(
             'contents' => array(
@@ -393,7 +575,6 @@ class GIG_Gemini_API {
                 'responseModalities' => array('IMAGE', 'TEXT'),
                 'imageConfig' => array(
                     'aspectRatio' => $params['ratio'],
-                    'imageSize' => $image_size,
                 ),
             ),
         );

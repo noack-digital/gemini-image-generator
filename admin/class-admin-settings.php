@@ -38,6 +38,7 @@ class GIG_Admin_Settings {
         add_settings_section('gig_api_section', __('🔑 API Konfiguration', 'gemini-image-generator'), '__return_false', $this->page_slug);
         add_settings_field('gig_api_key', __('Gemini API Key', 'gemini-image-generator'), array($this, 'render_api_key_field'), $this->page_slug, 'gig_api_section');
         add_settings_field('gig_text_model', __('Textmodell', 'gemini-image-generator'), array($this, 'render_text_model_field'), $this->page_slug, 'gig_api_section');
+        add_settings_field('gig_image_model', __('Bildmodell', 'gemini-image-generator'), array($this, 'render_image_model_field'), $this->page_slug, 'gig_api_section');
 
         // Sektion: Prompt
         add_settings_section('gig_prompt_section', __('✨ Prompt-Einstellungen', 'gemini-image-generator'), '__return_false', $this->page_slug);
@@ -71,7 +72,7 @@ class GIG_Admin_Settings {
         }
 
         // Text-Felder
-        $text_fields = array('text_model', 'default_style', 'default_mood', 'default_colors', 'default_ratio', 'default_quality', 'default_format', 'resize_mode', 'default_caption');
+        $text_fields = array('text_model', 'image_model', 'default_style', 'default_mood', 'default_colors', 'default_ratio', 'default_quality', 'default_format', 'resize_mode', 'default_caption');
         foreach ($text_fields as $field) {
             if (isset($input[$field])) {
                 $output[$field] = sanitize_text_field($input[$field]);
@@ -92,6 +93,9 @@ class GIG_Admin_Settings {
         }
         if (isset($input['negative_prompt'])) {
             $output['negative_prompt'] = sanitize_textarea_field($input['negative_prompt']);
+        }
+        if (isset($input['caption_prompt'])) {
+            $output['caption_prompt'] = sanitize_textarea_field($input['caption_prompt']);
         }
 
         // Checkboxen
@@ -183,6 +187,22 @@ class GIG_Admin_Settings {
             <option value="gemini-3-pro-preview" <?php selected($value, 'gemini-3-pro-preview'); ?>>Gemini 3 Pro (beste Qualität)</option>
         </select>
         <p class="description"><?php esc_html_e('Für Prompt-Generierung und Keyword-Analyse.', 'gemini-image-generator'); ?></p>
+        <?php
+    }
+
+    public function render_image_model_field() {
+        $settings = $this->gemini_api->get_settings();
+        $value = $settings['image_model'] ?? 'gemini-3-pro-image-preview';
+        $models = GIG_Gemini_API::get_supported_image_models();
+        ?>
+        <select name="<?php echo esc_attr(GIG_Gemini_API::OPTION_NAME); ?>[image_model]">
+            <?php foreach ($models as $key => $label): ?>
+                <option value="<?php echo esc_attr($key); ?>" <?php selected($value, $key); ?>>
+                    <?php echo esc_html($label); ?>
+                </option>
+            <?php endforeach; ?>
+        </select>
+        <p class="description"><?php esc_html_e('Google Gemini Modell für die Bildgenerierung. Bei Fehlern „Request contains an invalid argument" ggf. ein anderes Modell wählen.', 'gemini-image-generator'); ?></p>
         <?php
     }
 
@@ -422,10 +442,26 @@ class GIG_Admin_Settings {
 
         <p style="margin-top: 15px;">
             <label>
-                <strong><?php esc_html_e('Standard-Untertitel (Caption):', 'gemini-image-generator'); ?></strong><br>
-                <input type="text" name="<?php echo esc_attr(GIG_Gemini_API::OPTION_NAME); ?>[default_caption]" 
+                <strong><?php esc_html_e('Fallback-Untertitel (Caption):', 'gemini-image-generator'); ?></strong><br>
+                <input type="text" name="<?php echo esc_attr(GIG_Gemini_API::OPTION_NAME); ?>[default_caption]"
                        value="<?php echo esc_attr($settings['default_caption']); ?>" class="regular-text">
             </label>
+            <br>
+            <span class="description">
+                <?php esc_html_e('Wird verwendet, wenn unten kein Caption-Prompt gesetzt ist oder die KI-Generierung fehlschlägt.', 'gemini-image-generator'); ?>
+            </span>
+        </p>
+
+        <p style="margin-top: 20px;">
+            <label>
+                <strong><?php esc_html_e('Caption-Prompt (KI-Generierung des Bild-Untertitels):', 'gemini-image-generator'); ?></strong>
+            </label>
+            <br>
+            <textarea name="<?php echo esc_attr(GIG_Gemini_API::OPTION_NAME); ?>[caption_prompt]"
+                      class="large-text" rows="5"><?php echo esc_textarea($settings['caption_prompt'] ?? ''); ?></textarea>
+        </p>
+        <p class="description">
+            <?php esc_html_e('Dieser Text wird als System-Prompt an Gemini geschickt und steuert, wie der Bild-Untertitel generiert wird (Stil, Länge, Tonalität). Leer lassen, um stattdessen den Fallback-Untertitel zu verwenden. Gemini erhält zusätzlich automatisch Fokus-Keywords, Artikel-Titel und Bildmotiv als Kontext.', 'gemini-image-generator'); ?>
         </p>
         <?php
     }
