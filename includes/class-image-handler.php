@@ -108,7 +108,10 @@ class GIG_Image_Handler {
         // SEO-Metadaten setzen
         $this->set_seo_metadata($attachment_id, $metadata);
 
-        // Action Hook für Entwickler
+        // EU-AI-Act / Theme-Transparenz-Meta (dm_ai_*)
+        $this->set_ai_disclosure_meta($attachment_id, $prompt);
+
+        // Action Hook für Entwickler (Theme-Bridge kann ebenfalls dm_ai_* setzen)
         do_action('gig_image_generated', $attachment_id, $post_id, $prompt);
 
         // Memory wieder freigeben
@@ -357,6 +360,66 @@ class GIG_Image_Handler {
         
         if (!empty($metadata['keyword'])) {
             update_post_meta($attachment_id, '_gig_seo_keyword', $metadata['keyword']);
+        }
+    }
+
+    /**
+     * Speichert Transparenz-Metadaten für das Digital-Magazin-Theme (EU AI Act Badge).
+     *
+     * Meta-Keys (REST-fähig im Theme):
+     * - dm_ai_generated (bool)
+     * - dm_ai_provider  (string) z. B. google
+     * - dm_ai_model     (string) z. B. gemini-3-pro-image-preview
+     * - dm_ai_prompt    (string)
+     *
+     * @param int    $attachment_id Attachment-ID.
+     * @param string $prompt        Verwendeter Bildprompt.
+     */
+    private function set_ai_disclosure_meta($attachment_id, $prompt) {
+        $settings = get_option(GIG_Gemini_API::OPTION_NAME, array());
+        if (!is_array($settings)) {
+            $settings = array();
+        }
+
+        $model = !empty($settings['image_model'])
+            ? (string) $settings['image_model']
+            : 'gemini-3-pro-image-preview';
+
+        /**
+         * Filter: KI-Provenance vor dem Speichern anpassen.
+         *
+         * @param array $meta {
+         *     @type bool   $generated
+         *     @type string $provider
+         *     @type string $model
+         *     @type string $prompt
+         * }
+         * @param int    $attachment_id Attachment-ID.
+         * @param string $prompt        Roh-Prompt.
+         */
+        $meta = apply_filters(
+            'gig_ai_disclosure_meta',
+            array(
+                'generated' => true,
+                'provider'  => 'google',
+                'model'     => $model,
+                'prompt'    => (string) $prompt,
+            ),
+            $attachment_id,
+            $prompt
+        );
+
+        if (empty($meta['generated'])) {
+            return;
+        }
+
+        update_post_meta($attachment_id, 'dm_ai_generated', 1);
+        update_post_meta($attachment_id, 'dm_ai_provider', sanitize_text_field((string) ($meta['provider'] ?? 'google')));
+        update_post_meta($attachment_id, 'dm_ai_model', sanitize_text_field((string) ($meta['model'] ?? $model)));
+
+        $prompt_value = isset($meta['prompt']) ? (string) $meta['prompt'] : (string) $prompt;
+        if ($prompt_value !== '') {
+            update_post_meta($attachment_id, 'dm_ai_prompt', sanitize_textarea_field($prompt_value));
         }
     }
 

@@ -5,6 +5,12 @@ Alle wichtigen Änderungen an diesem Plugin werden in dieser Datei dokumentiert.
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/),
 und dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 
+## [1.2.1] - 2026-08-07
+
+### Hinzugefügt
+- Speichert bei jeder Bildgenerierung Theme-Transparenz-Meta für EU-AI-Act-Badge: `dm_ai_generated`, `dm_ai_provider` (`google`), `dm_ai_model` (aus Einstellungen), `dm_ai_prompt`
+- Filter `gig_ai_disclosure_meta` zum Anpassen der Provenance vor dem Speichern
+
 ## [1.2.0] - 2026-04-20
 
 ### Hinzugefügt
